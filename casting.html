@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Casting Tool — The Old Master's Guide to the I Ching</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="over">The Old Master Series · Book One</div>
+  <h1>The Casting Tool</h1>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="errata.html">Errata</a>
+  </nav>
+</header>
+
+<p class="note">Three coins, six throws, bottom up — the method taught in Chapter Five.
+This tool writes your question down, records the date, shows the lines as they fall, and
+cites its text. It does not interpret. The reading is yours; the book teaches it.</p>
+
+<section class="qbox">
+  <h2>1 · Write the question first</h2>
+  <p class="note">Everything this apparatus does begins with what you can say you're
+  asking. A tool that fails this fails everything.</p>
+  <textarea id="q" placeholder="Write the decision you are actually facing…"></textarea>
+  <p>
+    <button class="btn" id="go" disabled>Throw the coins</button>
+    <span class="note" id="hint"> write the question to begin (a real question, not a yes/no wish)</span>
+  </p>
+</section>
+
+<section id="result" hidden>
+  <h2>2 · The record</h2>
+  <div class="card">
+    <p><b>Question asked:</b> <span id="rq"></span></p>
+    <p><b>Date recorded:</b> <span id="rd"></span></p>
+  </div>
+
+  <h2>3 · The six throws, as they fell</h2>
+  <div id="throws" class="coins"></div>
+
+  <h2 id="fighead">4 · The figure and the sentence</h2>
+  <div class="card">
+    <div class="hexname"><b id="hname"></b> <span id="hpy"></span> — <span id="hgloss"></span></div>
+    <div class="biglines" id="hfig"></div>
+    <p><b>Judgment (卦辞):</b> <span id="hjud"></span></p>
+    <div id="hyaobox">
+      <p><b>The moving lines (爻辞), exactly as the text gives them:</b></p>
+      <div id="hyaos"></div>
+    </div>
+    <div id="changedbox" hidden>
+      <p><b>The figure it becomes (之卦):</b> <span id="cname"></span>
+      <span class="biglines" id="cfig"></span></p>
+    </div>
+  </div>
+
+  <p class="cite" id="cite">Text cited: the received Zhouyi (周易), public domain, digital
+  Yizang recension. Hexagram names and English name-glosses follow Appendix A of
+  <em>The Old Master's Guide to the I Ching</em>. The sentences are shown in the original
+  Chinese; no interpretation is offered here, by design.</p>
+
+  <p class="checkline"><b>The four-question checklist, applied to this tool:</b><br>
+  Does it make you write the question first? — Yes, it refused to start until you did.<br>
+  Does it record the date? — Yes, above, with the question.<br>
+  Does it show the moving lines as they fall, without rewriting them into a verdict? — Yes; the coin values are printed and nothing is translated into advice.<br>
+  Does it cite what text the judgment comes from? — Yes, in the note below the result.</p>
+</section>
+
+<footer>
+  <p>This tool describes a cultural practice and a framework for thinking. It offers no
+  medical, financial, or legal advice, and nothing on it is presented as knowledge of the
+  future.</p>
+</footer>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+var POS_NAMES = ["初", "二", "三", "四", "五", "上"];
+function rand2() { // fair coin: 2 or 3, crypto-backed
+  var a = new Uint32Array(1); crypto.getRandomValues(a); return (a[0] % 2) ? 3 : 2;
+}
+function drawLine(el, kind) { // kind: 7 solid / 8 broken / 9 moving solid / 6 moving broken
+  el.className = kind === 7 || kind === 9 ? "line-solid" : "line-broken";
+  if (kind === 8 || kind === 6) el.innerHTML = "<i></i><i></i>";
+  else el.innerHTML = "";
+  if (kind === 9 || kind === 6) el.closest(".throw").classList.add("moving");
+}
+function figChars(lines) { // bottom-up 1/0 → box-drawing, top-down display
+  var out = [];
+  for (var i = 5; i >= 0; i--) out.push(lines[i] ? "━━━━━" : "━━  ━");
+  return out.join("<br>");
+}
+function findByLines(lines) {
+  for (var i = 0; i < ZHOUYI.length; i++) {
+    var h = ZHOUYI[i], ok = true;
+    for (var k = 0; k < 6; k++) if (h.lines6[k] !== lines[k]) { ok = false; break; }
+    if (ok) return h;
+  }
+  return null;
+}
+function lineLabel(k, kind) { // k = 0..5 bottom-up
+  var yang = kind === 7 || kind === 9;
+  var pos = (k === 0 || k === 5) ? POS_NAMES[k] + (yang ? "九" : "六")
+                                 : (yang ? "九" : "六") + POS_NAMES[k];
+  return pos + (kind === 9 ? " · old yang, moving" : kind === 6 ? " · old yin, moving"
+              : kind === 7 ? " · young yang" : " · young yin");
+}
+var throwKinds = [], baseLines = [], qText = "", when = "";
+
+var q = document.getElementById("q"), go = document.getElementById("go");
+q.addEventListener("input", function () {
+  go.disabled = q.value.trim().length < 8;
+  document.getElementById("hint").textContent = go.disabled
+    ? " write the question to begin (a real question, not a yes/no wish)"
+    : " ready — the coins will not throw themselves";
+});
+go.addEventListener("click", function () {
+  qText = q.value.trim();
+  when = new Date().toLocaleString(undefined, {dateStyle: "full", timeStyle: "short"});
+  throwKinds = []; baseLines = [0,0,0,0,0,0];
+  var box = document.getElementById("throws"); box.innerHTML = "";
+  document.getElementById("result").hidden = false;
+  document.getElementById("rq").textContent = "“" + qText + "”";
+  document.getElementById("rd").textContent = when;
+  var k = 0;
+  var timer = setInterval(function () {
+    var c = [rand2(), rand2(), rand2()];
+    var sum = c[0] + c[1] + c[2];
+    throwKinds.push(sum); baseLines[k] = (sum === 7 || sum === 9) ? 1 : 0;
+    var row = document.createElement("div"); row.className = "throw";
+    row.innerHTML = '<span class="co">throw ' + (k+1) + ': ' + c.join(" · ") +
+      ' = ' + sum + '</span><div class="linebox"><div class="line-h"></div></div><span class="tag"></span>';
+    box.appendChild(row);
+    drawLine(row.querySelector(".line-h"), sum);
+    row.querySelector(".tag").textContent =
+      lineLabel(k, sum).replace(/^([^·]+)·.*$/, "$1") + (sum >= 9 || sum === 6 ? " · moving" : "");
+    k++;
+    if (k === 6) { clearInterval(timer); setTimeout(showFigure, 350); }
+  }, 420);
+});
+function showFigure() {
+  var h = findByLines(baseLines);
+  document.getElementById("hname").textContent = h.name;
+  document.getElementById("hpy").textContent = h.py;
+  document.getElementById("hgloss").textContent = h.gloss;
+  document.getElementById("hfig").innerHTML = figChars(h.lines6);
+  document.getElementById("hjud").textContent = h.judgment;
+  var movers = [];
+  for (var k = 0; k < 6; k++) if (throwKinds[k] === 6 || throwKinds[k] === 9) movers.push(k);
+  var ybox = document.getElementById("hyaobox"), ylist = document.getElementById("hyaos");
+  if (movers.length) {
+    ybox.hidden = false; ylist.innerHTML = "";
+    movers.forEach(function (k) {
+      var pos = (k === 0 || k === 5)
+        ? POS_NAMES[k] + (throwKinds[k] === 9 ? "九" : "六")
+        : (throwKinds[k] === 9 ? "九" : "六") + POS_NAMES[k];
+      var yao = h.yaos.filter(function (y) { return y.pos === pos; })[0];
+      var d = document.createElement("div"); d.className = "yao";
+      d.innerHTML = "<b>" + pos + "：</b>" + (yao ? yao.text : "（原文位置名差异）");
+      ylist.appendChild(d);
+    });
+    var changed = baseLines.slice();
+    movers.forEach(function (k) { changed[k] = 1 - changed[k]; });
+    var c = findByLines(changed);
+    document.getElementById("changedbox").hidden = false;
+    document.getElementById("cname").textContent = c.name + " (" + c.py + ")";
+    document.getElementById("cfig").innerHTML = figChars(c.lines6);
+  } else {
+    ybox.hidden = true; document.getElementById("changedbox").hidden = true;
+  }
+  document.getElementById("fighead").scrollIntoView({behavior: "smooth"});
+}
+</script>
+</body>
+</html>

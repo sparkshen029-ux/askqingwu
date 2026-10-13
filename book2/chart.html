@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Four Pillars Calculator — The Old Master's Guide to Chinese Astrology</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="over">The Old Master Series · Book Two</div>
+  <h1>The Four Pillars Calculator</h1>
+  <div class="zh">八字 · 四柱</div>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="errata.html">Corrections &amp; news</a>
+  </nav>
+</header>
+
+<p class="note">The calculator promised in the book: you write your question first, it records
+the date, it shows the four pillars exactly as they fall, and it names every table and rule it
+uses. Then it stops talking — no verdicts, no advice. Nothing you type leaves this page: the
+arithmetic runs in your browser, and no record is kept on any server.</p>
+
+<div id="calib" class="card">Calibrating…</div>
+
+<section class="qbox">
+  <h2>1 · Write the question first</h2>
+  <p class="note">The book's rule: a chart is cast for a question. What are you actually
+  asking? (A real question, in a real sentence.)</p>
+  <textarea id="q" placeholder="Write the question you are actually asking…"></textarea>
+</section>
+
+<section>
+  <h2>2 · The birth</h2>
+  <div class="grid2">
+    <p><label>Date of birth (western calendar)<br>
+      <input type="date" id="bd"></label></p>
+    <p><label>Time by the clock (24h)<br>
+      <input type="time" id="bt"></label>
+      <span class="note" id="dstnote"></span></p>
+  </div>
+  <p><label>Place of birth
+    <select id="city"></select></label></p>
+  <div class="grid2" id="manualbox" hidden>
+    <p><label>Longitude east (negative = west)
+      <input type="number" id="lon" step="0.01" min="-180" max="180" value="0"></label></p>
+    <p><label>Standard time offset (UTC hours)
+      <select id="tz"></select></label></p>
+  </div>
+  <p><label>For the decades board: <select id="gender">
+    <option value="">— choose (optional) —</option>
+    <option value="f">female</option>
+    <option value="m">male</option>
+  </select></label>
+  <span class="note">the board's direction depends on it; chapter seven explains why.</span></p>
+</section>
+
+<section>
+  <h2>3 · The conventions, in the open</h2>
+  <p class="note">Where honest calculators disagree, they disagree on conventions. Here are
+  this one's, switchable; the book's chapters three and eleven explain each.</p>
+  <p><b>Night rat-hour (23:00–24:00):</b>
+    <label><input type="radio" name="ns" value="early" checked> day turns at 23:00 (early school)</label>
+    <label><input type="radio" name="ns" value="late"> day turns at midnight (late school)</label></p>
+  <p><b>Hour clock:</b>
+    <label><input type="checkbox" id="eot" checked> include the equation of time (full true solar time)</label></p>
+  <p><b>China daylight saving 1986–1991:</b>
+    <label><input type="checkbox" id="dst"> the clock read summer time (subtract one hour)</label></p>
+  <p><b>Hemisphere school (southern births):</b>
+    <select id="hemi">
+      <option value="north">global terms (default)</option>
+      <option value="south">southern month-seat (minority convention)</option>
+    </select></p>
+  <p><button class="btn" id="go" disabled>Cast the chart</button>
+  <span class="note" id="hint"> write the question and fill the birth to begin</span></p>
+</section>
+
+<section id="result" hidden>
+  <h2>4 · The record</h2>
+  <div class="card">
+    <p><b>Question asked:</b> <span id="rq"></span></p>
+    <p><b>Date recorded (when this chart was cast):</b> <span id="rd"></span></p>
+    <p><b>Conventions used:</b> <span id="rsw"></span></p>
+  </div>
+
+  <h2>5 · The correction, step by step</h2>
+  <div class="card" id="rlog"></div>
+
+  <h2>6 · The four pillars, as they fall</h2>
+  <div id="charts"></div>
+
+  <h2>7 · The three checks (the facts, not the verdict)</h2>
+  <div class="card" id="rchecks"></div>
+  <div class="card" id="rclimate" hidden></div>
+
+  <div id="boardbox" hidden>
+    <h2>8 · The decades board</h2>
+    <div class="card" id="rboard"></div>
+  </div>
+
+  <h2>9 · What tables and rules this tool used</h2>
+  <div class="card cite" id="rcite"></div>
+
+  <p class="stopline" id="rstop">That is everything the instrument computes. It has no opinion
+  about your question. The reading — the part that happens in a human head — is yours, and the
+  book teaches where to begin: chapters four through ten.</p>
+</section>
+
+<footer>
+  <p>This tool describes a cultural practice and a framework for thinking. It offers no
+  medical, financial, or legal advice, and nothing on it is presented as knowledge of the
+  future. It keeps no record of your birth hour on any server; the result is yours to keep
+  or close.</p>
+</footer>
+
+</div>
+<script src="bazi.js"></script>
+<script>
+(function(){
+"use strict";
+var B = window.BAZI, $ = function(id){ return document.getElementById(id); };
+
+/* cities */
+var sel = $("city"), tzSel = $("tz");
+B.CITIES.forEach(function(c, i){
+  var o = document.createElement("option"); o.value = String(i); o.textContent = c[0]; sel.appendChild(o);
+});
+var oman = document.createElement("option"); oman.value = "manual"; oman.textContent = "another place — enter coordinates"; sel.appendChild(oman);
+for (var t = -12; t <= 14; t++){
+  var o = document.createElement("option"); o.value = String(t); o.textContent = "UTC" + (t >= 0 ? "+" : "") + t; tzSel.appendChild(o);
+}
+function fillCity(){
+  if (sel.value === "manual"){ $("manualbox").hidden = false; return; }
+  var c = B.CITIES[+sel.value];
+  $("manualbox").hidden = false;
+  $("lon").value = c[1]; tzSel.value = String(c[2]);
+}
+sel.addEventListener("change", fillCity);
+sel.value = "2"; fillCity(); /* Chengdu default — the book's walkthrough city */
+
+/* calibration gate */
+var cal = B.selfTest();
+if (!cal.pass){
+  $("calib").className = "card bad";
+  $("calib").innerHTML = "<b>Calibration failed — this tool has taken itself offline.</b> " +
+    "The startup self-test (the two anchor dates and the book's worked example) did not pass. " +
+    "Per the book's own rule, a miscalibrated instrument does not cast. Please report this via the corrections page.";
+  $("go").disabled = true;
+  document.querySelectorAll("textarea,input,select,button").forEach(function(el){ if (el.id !== "go") el.disabled = true; });
+  return;
+}
+$("calib").className = "card ok";
+$("calib").innerHTML = "<b>Calibration: " + cal.checks.length + "/" + cal.checks.length + " pass.</b> " +
+  "Checked at page load: 1949-10-01 = 甲子 · 1900-01-01 = 甲戌 (the two anchors), and the book's " +
+  "chapter-ten example, 1990-06-20 Chengdu 12:40 = 庚午 壬午 丙辰 甲午. If any of these had failed, the tool would have shut itself off.";
+
+/* dst note on date change */
+$("bd").addEventListener("change", function(){
+  var v = $("bd").value;
+  $("dstnote").textContent = "";
+  if (!v) return;
+  var p = v.split("-");
+  var inWin = (function(){ var t = +p[0]*10000 + +p[1]*100 + +p[2];
+    return [[1986,5,4,1986,9,14],[1987,4,12,1987,9,13],[1988,4,17,1988,9,11],[1989,4,16,1989,9,17],[1990,4,15,1990,9,16],[1991,4,14,1991,9,15]].some(function(w){ return t >= w[0]*10000+w[1]*100+w[2] && t <= w[3]*10000+w[4]*100+w[5]; }); })();
+  if (inWin) $("dstnote").textContent = " — this date is inside China's 1986-1991 daylight-saving window; see the switch below.";
+});
+
+/* enable/disable */
+function ready(){
+  var ok = $("q").value.trim().length >= 20 && $("bd").value && $("bt").value &&
+           (sel.value !== "manual" || $("lon").value !== "");
+  $("go").disabled = !ok;
+  $("hint").textContent = ok ? "" : " write the question and fill the birth to begin";
+}
+$("q").addEventListener("input", ready);
+$("bd").addEventListener("input", ready);
+$("bt").addEventListener("input", ready);
+$("lon").addEventListener("input", ready);
+
+function nightSchool(){ return document.querySelector('input[name="ns"]:checked').value; }
+function opts(){
+  return { nightSchool: nightSchool(), eot: $("eot").checked, dst: $("dst").checked,
+           southern: $("hemi").value === "south", gender: $("gender").value || null };
+}
+
+$("go").addEventListener("click", function(){
+  var bd = $("bd").value.split("-"), bt = $("bt").value.split(":");
+  var y = +bd[0], mo = +bd[1], d = +bd[2], hh = +bt[0], mi = +bt[1];
+  var lon = sel.value === "manual" ? parseFloat($("lon").value) : B.CITIES[+sel.value][1];
+  var tz = sel.value === "manual" ? parseFloat(tzSel.value) : B.CITIES[+sel.value][2];
+  var o = opts();
+  render(y, mo, d, hh, mi, lon, tz, o);
+});
+
+function pillarCard(label, s, b, dmStem){
+  var st = B.STEMS[s], br = B.BRANCHES[b];
+  var hid = B.HIDDEN[b].map(function(hz){
+    var si = B.STEMS.findIndex(function(x){ return x.zh === hz; });
+    return "<span class='hid'><b class='zh'>" + hz + "</b> <i>" + B.tenGod(dmStem, si) + "</i></span>";
+  }).join(" ");
+  var rel = (s === dmStem) ? "Day Master 日主" : B.tenGod(dmStem, s);
+  return "<div class='pillar'><div class='plabel'>" + label + "</div>" +
+    "<div class='pchars'><span class='zh big'>" + st.zh + "</span><span class='zh big'>" + br.zh + "</span></div>" +
+    "<div class='ppy'>" + st.py + " " + br.py + " (" + br.animal + ")</div>" +
+    "<div class='prel'><b>" + rel + "</b></div>" +
+    "<div class='phid'>holds: " + hid + "</div></div>";
+}
+
+function chartBlock(title, r, extra){
+  var p = r.pillars, dm = p.day.s;
+  var h = "<div class='chartcard'><h3>" + title + "</h3><div class='pillars'>" +
+    pillarCard("Year 年柱", p.year.s, p.year.b, dm) +
+    pillarCard("Month 月柱", p.month.s, p.month.b, dm) +
+    pillarCard("Day 日柱", p.day.s, p.day.b, dm) +
+    pillarCard("Hour 时柱", p.hour.s, p.hour.b, dm) +
+    "</div>";
+  h += "<p class='note'>" + r.lichun.note + " " + r.term.note + "</p>";
+  if (extra) h += extra;
+  h += "</div>";
+  return h;
+}
+
+function threeChecks(r){
+  var p = r.pillars, dm = B.STEMS[p.day.s], monthBr = B.BRANCHES[p.month.b];
+  var grade = B.gradeOf(dm.el, monthBr.el);
+  /* roots: branches hiding the DM's element or what feeds it */
+  var roots = [];
+  ["year","month","day","hour"].forEach(function(k){
+    var b = p[k].b;
+    B.HIDDEN[b].forEach(function(hz, i){
+      var si = B.STEMS.findIndex(function(x){ return x.zh === hz; });
+      var el = B.STEMS[si].el;
+      if (el === dm.el || el === (dm.el === "Wood" ? "Water" : dm.el === "Fire" ? "Wood" : dm.el === "Earth" ? "Fire" : dm.el === "Metal" ? "Earth" : "Metal")){
+        roots.push(B.BRANCHES[b].zh + " (" + hz + (i === 0 ? ", main store — a deep root" : " — a thin root") + ")");
+      }
+    });
+  });
+  /* crowd: 8 units — 4 stems + 4 branch main elements */
+  var allies = [], rivals = [];
+  ["year","month","day","hour"].forEach(function(k){
+    var s = p[k].s, b = p[k].b;
+    var elS = B.STEMS[s].el, elB = B.BRANCHES[b].el;
+    var isAlly = function(el){ return el === dm.el || ELfeeds(dm.el) === el; };
+    allies.push(isAlly(elS) ? 1 : 0);
+    allies.push(isAlly(elB) ? 1 : 0);
+  });
+  var nA = allies.reduce(function(a,b){ return a+b; }, 0), nR = 8 - nA;
+  var feedsEl = ELfeeds(dm.el);
+  var h = "<p><b>First check — the season (得令):</b> the Day Master is " + dm.el.toLowerCase() +
+    " (" + dm.zh + " " + dm.py + "), and the month seat is the " + monthBr.zh + " (" + monthBr.py +
+    ", " + monthBr.el.toLowerCase() + ") month. The month's grade for it: <b>" + grade.zh +
+    " " + grade.py + "</b> — " + grade.en + ".</p>";
+  h += "<p><b>Second check — the ground (得地):</b> " + (roots.length
+      ? "the branches hold " + dm.el.toLowerCase() + " or its feeder (" + feedsEl.toLowerCase() + "): " + roots.join("; ") + "."
+      : "no branch hides " + dm.el.toLowerCase() + " or " + feedsEl.toLowerCase() + " — the ground holds no root.") + "</p>";
+  h += "<p><b>Third check — the crowd (得势):</b> of the eight units (four stems, four branch seats), " +
+      nA + " share or feed the Day Master's element and " + nR + " press on it or drain it.</p>";
+  h += "<p class='note'>Three facts, no verdict — chapter five shows how readers weigh them, and why no single check carries the other two.</p>";
+  return h;
+}
+function ELfeeds(el){ return {Wood:"Fire", Fire:"Earth", Earth:"Metal", Metal:"Water", Water:"Wood"}[el]; }
+
+function render(y, mo, d, hh, mi, lon, tz, o){
+  var r = B.compute(y, mo, d, hh, mi, lon, tz, o);
+  $("result").hidden = false;
+  $("rq").textContent = "“" + $("q").value.trim() + "”";
+  var now = new Date();
+  $("rd").textContent = now.getFullYear() + "-" + B.pad(now.getMonth()+1) + "-" + B.pad(now.getDate()) +
+    " " + B.pad(now.getHours()) + ":" + B.pad(now.getMinutes());
+  $("rsw").textContent = "night rat-hour: " + (o.nightSchool === "early" ? "day turns at 23:00" : "day turns at midnight") +
+    " · equation of time: " + (o.eot ? "on" : "off") + " · China DST: " + (o.dst ? "on" : "off") +
+    " · hemisphere: " + (o.southern ? "southern month-seat" : "global terms") + ".";
+  $("rlog").innerHTML = "<p>" + r.log.map(function(l){ return l; }).join("</p><p>") + "</p>";
+
+  var charts = "";
+  if (r.nightZi){
+    var other = B.compute(y, mo, d, hh, mi, lon, tz, Object.assign({}, o, {nightSchool: o.nightSchool === "early" ? "late" : "early"}));
+    charts += chartBlock(
+      o.nightSchool === "early" ? "Early school — the day turns at 23:00" : "Late school — the day turns at midnight",
+      r, null);
+    charts += chartBlock(
+      o.nightSchool === "early" ? "Late school — the day turns at midnight" : "Early school — the day turns at 23:00",
+      other, "<p class='note'>Your birth, by the sun, sits in the night rat-hour's seam (23:00–24:00). The trade has two schools for whose day the rat hour belongs, the book's chapter three teaches both and refuses to pick for you: the two day pillars stand a full notch apart, and everything downstream reads differently. Look at both.</p>");
+  } else {
+    charts += chartBlock("Your chart — " + r.civil.y + "-" + B.pad(r.civil.m) + "-" + B.pad(r.civil.d) +
+      " by the calendar where the birth happened", r, null);
+  }
+  $("charts").innerHTML = charts;
+  $("rchecks").innerHTML = threeChecks(r);
+  $("rclimate").hidden = false;
+  $("rclimate").innerHTML = "<p class='note'><b>The climate line (chapter six's instrument, 調候 tiáohòu):</b> " +
+    B.climateLine(r.pillars.day.s, r.pillars.month.b) + "</p>";
+  if (r.board){
+    $("boardbox").hidden = false;
+    var b = r.board;
+    var cols = b.cols.map(function(c){
+      return "<div class='dcol'><div class='zh dgz'>" + B.STEMS[c.s].zh + B.BRANCHES[c.b].zh + "</div>" +
+        "<div class='note'>" + Math.floor(c.from) + "–" + Math.floor(c.to) + "</div></div>";
+    }).join("");
+    $("rboard").innerHTML = "<p>Direction: " + (b.forward ? "forward" : "backward") +
+      " (the year's polarity and the answer you gave; chapter seven explains the switch). Counting to the " +
+      (b.forward ? "coming" : "previous") + " joint (" + b.term + ") at three days to the year, the board starts at age " +
+      (Math.round(b.startYears * 10) / 10) + ". Eight decades, labels only — weather for the chart, nothing more:</p>" +
+      "<div class='drow'>" + cols + "</div>" +
+      "<p class='note'>The decades say when a character arrives; what its arrival means is the chart-reader's work, and chapter ten walked this whole construction once already, step by step.</p>";
+  } else {
+    $("boardbox").hidden = true;
+  }
+  $("rcite").innerHTML =
+    "<p><b>The sixty-pair wheel and the hidden-stem table</b> — as printed in Appendix A of <i>The Old Master's Guide to Chinese Astrology: Four Pillars</i> (the book this tool accompanies).</p>" +
+    "<p><b>Year pillar:</b> turns at Lìchūn 立春, the classical Ziping convention; the civil new-year convention is a parallel usage the book describes (chapter three).</p>" +
+    "<p><b>Month pillar:</b> turns at the twelve minor solar terms. This edition computes the term moments astronomically in your browser (the sun's apparent longitude, standard formulas; typically accurate to about a minute). Births within a few minutes of a joint should be walked twice, as chapter ten says. A certified ephemeris table is the planned upgrade.</p>" +
+    "<p><b>Day pillar:</b> the sixty-pair wheel counted by Julian day, self-tested at page load against two anchors (1949-10-01 = 甲子, 1900-01-01 = 甲戌) and the book's chapter-ten example. The day wheel never pauses for months, years, or leap months (chapter three).</p>" +
+    "<p><b>Hour pillar:</b> true solar time — the longitude step shown, plus the equation of time when its switch is on. This edition treats the clock time you enter as standard time; China's 1986-1991 daylight-saving window has its own disclosed switch.</p>" +
+    "<p><b>Night rat-hour:</b> two schools, both shown when the birth sits in the seam (chapter three).</p>" +
+    "<p><b>Ten relations, three checks, decades board:</b> filed and counted per the book's chapters four, five, and seven — labels and counts only, no verdicts. This tool is plain arithmetic in your browser: nothing is uploaded, nothing is stored.</p>" +
+    "<p><b>Climate line (v1.1):</b> one line under the three checks, from the Qiongtong Baojian entries the book itself quotes and checks — first-month Jia and third-month Jia (chapter six), fifth-month Bing (chapter ten). For every other month the tool states that boundary instead of improvising a prescription. The line reports what the catalogue calls for; it draws no conclusion about any life.</p>" +
+    "<p class='note'>Edition: calculator v1.1 (basic edition plus the climate line), tables v1.0, page formulated October 2026. Corrections: see the corrections page — a tool that can be corrected by its users is the only kind this book was willing to ship.</p>";
+  $("result").scrollIntoView({behavior: "smooth"});
+}
+})();
+</script>
+</body>
+</html>

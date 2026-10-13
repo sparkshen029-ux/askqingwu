@@ -1,0 +1,42 @@
+/* The Old Master site — shared styles (paper + ink + vermilion, matches the book's cover) */
+:root{
+  --paper:#f4efe4; --ink:#1c1a17; --red:#9e2b25; --grey:#5a544b; --line:#cfc8b8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:Georgia,"Palatino Linotype","Times New Roman",serif;line-height:1.65}
+.wrap{max-width:880px;margin:0 auto;padding:2.2rem 1.4rem 4rem}
+a{color:var(--red)}
+h1,h2{font-family:"Palatino Linotype",Georgia,serif;line-height:1.2}
+h1{font-size:2rem;margin:0.2rem 0 0.4rem}
+h2{font-size:1.25rem;margin:2.2rem 0 0.6rem}
+.masthead{border-bottom:3px solid var(--red);padding-bottom:1.1rem;margin-bottom:1.6rem}
+.masthead .over{letter-spacing:.18em;font-size:.72rem;color:var(--grey);text-transform:uppercase}
+.masthead .zh{font-family:"KaiTi","STKaiti",serif;color:var(--grey)}
+.nav{margin:1rem 0 0;font-size:.95rem}
+.nav a{margin-right:1.2rem;text-decoration:none;border-bottom:1px solid var(--line)}
+.btn{display:inline-block;background:var(--red);color:var(--paper);border:none;
+  padding:.65rem 1.4rem;font-size:1rem;font-family:inherit;cursor:pointer;border-radius:3px}
+.btn:disabled{background:#b9ac95;cursor:not-allowed}
+.note{font-size:.85rem;color:var(--grey)}
+.card{background:#fffdf7;border:1px solid var(--line);border-radius:4px;padding:1.2rem 1.4rem;margin:1rem 0}
+footer{border-top:1px solid var(--line);margin-top:3rem;padding-top:1rem;font-size:.82rem;color:var(--grey)}
+/* casting page */
+.qbox textarea{width:100%;min-height:5.5em;font-family:inherit;font-size:1rem;
+  border:1px solid var(--line);background:#fffdf7;border-radius:3px;padding:.7rem;color:var(--ink)}
+.coins{font-size:1.05rem}
+.throw{margin:.55rem 0;display:flex;align-items:center;gap:.8rem}
+.throw .co{color:var(--grey);font-size:.9rem;min-width:7.2em}
+.linebox{flex:0 0 auto;width:240px}
+.line-solid,.line-broken{height:14px;background:var(--ink);position:relative}
+.line-broken{background:transparent}
+.line-broken i{position:absolute;top:0;height:14px;background:var(--ink);width:44%}
+.line-broken i:first-child{left:0}.line-broken i:last-child{right:0}
+.moving .line-solid,.moving .line-broken i{background:var(--red)}
+.tag{font-size:.85rem;color:var(--grey);min-width:4.5em}
+.hexname{font-size:1.15rem;margin:.3rem 0}
+.biglines{font-family:"KaiTi","STKaiti",serif;font-size:1.9rem;letter-spacing:.08em;margin:.4rem 0}
+.yao{margin:.35rem 0}
+.yao b{font-family:"KaiTi","STKaiti",serif;font-weight:normal}
+.cite{font-size:.85rem;color:var(--grey);border-left:3px solid var(--red);padding-left:.8rem;margin:1.2rem 0}
+.checkline{font-size:.9rem;color:var(--grey)}
